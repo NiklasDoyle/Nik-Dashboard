@@ -9,14 +9,14 @@ module.exports = {
   apps: [
     {
       name: 'dashboard-server',
-      cwd: '/home/nikpi/auto/nik-dashboard',
+      cwd: __dirname,
       script: 'server/index.js',
       env: { NODE_ENV: 'production', PORT: '3001' },
       autorestart: true,
     },
     {
       name: 'dashboard-kiosk',
-      cwd: '/home/nikpi/auto/nik-dashboard',
+      cwd: __dirname,
       script: './kiosk-pi.sh',
       interpreter: 'bash',
       autorestart: true,
