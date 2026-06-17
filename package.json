@@ -1,0 +1,35 @@
+{
+  "name": "dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,vite -c blue,magenta \"npm run dev:server\" \"npm run dev:vite\"",
+    "dev:server": "node server/index.js",
+    "dev:vite": "vite",
+    "build": "vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "kiosk": "./kiosk.sh",
+    "sync:gmail": "node bin/sync-macrofactor.js"
+  },
+  "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.15",
+    "@fullcalendar/list": "^6.1.15",
+    "@fullcalendar/react": "^6.1.15",
+    "@fullcalendar/timegrid": "^6.1.15",
+    "@notionhq/client": "^2.2.15",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "imapflow": "^1.4.1",
+    "mailparser": "^3.9.10",
+    "node-ical": "^0.18.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "vite": "^5.4.0"
+  }
+}

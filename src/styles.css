@@ -1,0 +1,828 @@
+:root {
+  --bg: #0e0f13;
+  --panel: #181a21;
+  --panel-2: #1f222b;
+  --text: #e8eaf0;
+  --muted: #9aa0ad;
+  --border: #2a2e39;
+  --accent: #4a8cff;
+  --notion: #d16e27;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Layout: tuned for a tall/narrow vertical monitor ---- */
+.dashboard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Vertical split: top half (header + calendar) = 50%, Today = 25%,
+   fitness = 25%. The 2:1:1 flex ratio produces those proportions. */
+.top-half {
+  flex: 2 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agenda-pane,
+.fitness-pane {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* Within the top half: header takes its natural height, calendar fills rest. */
+.top-half .calendar-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.dashboard section,
+.topbar {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* ---- Top bar: clock + temp chart + weather ---- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 26px;
+}
+
+/* Keep the clock and weather at their natural size; only the chart flexes. */
+.clock,
+.weather {
+  flex: 0 0 auto;
+}
+
+.clock-time {
+  white-space: nowrap;
+}
+
+/* Next-12-hours temperature trend, centered between clock and weather. */
+.temp-chart {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 380px;
+  height: 66px;
+  margin: 0 28px;
+}
+
+/* Temperature values above the graph, aligned with the x-axis time ticks. */
+.temp-vrow {
+  display: flex;
+  gap: 8px;
+}
+
+.temp-vlabels {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.temp-top {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.temp-axis {
+  flex: 0 0 auto;
+  width: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.temp-plot {
+  flex: 1;
+  min-width: 0;
+}
+
+.temp-chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.temp-xrow {
+  display: flex;
+  gap: 8px;
+}
+
+.temp-xspacer {
+  flex: 0 0 auto;
+  width: 26px;
+}
+
+.temp-xlabels {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-time {
+  font-size: 3.4rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.clock-date {
+  font-size: 1.15rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.weather-emoji {
+  font-size: 2.6rem;
+}
+
+.weather-temp {
+  font-size: 2.6rem;
+  font-weight: 700;
+}
+
+.weather-meta {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.weather-error {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ---- Calendar pane ---- */
+.calendar-pane {
+  padding: 14px;
+}
+
+.calendar-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.calendar-error {
+  font-size: 0.8rem;
+  color: #ffb4b4;
+  background: rgba(255, 80, 80, 0.12);
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+/* FullCalendar dark theme */
+.fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--panel-2);
+  --fc-today-bg-color: rgba(74, 140, 255, 0.12);
+  --fc-list-event-hover-bg-color: var(--panel-2);
+  flex: 1;
+  color: var(--text);
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.4rem;
+}
+
+.fc .fc-button {
+  background: var(--panel-2);
+  border-color: var(--border);
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.fc-event {
+  border: none;
+  font-size: 0.8rem;
+  padding: 1px 4px;
+}
+
+/* ---- Agenda (Today) ---- */
+.agenda-pane {
+  padding: 16px 22px;
+  display: flex;
+}
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.agenda-title {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+}
+
+/* Two side-by-side parts: to-dos (Google) and workouts (Notion). */
+.agenda-cols {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 22px;
+}
+
+.agenda-col {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.agenda-col + .agenda-col {
+  border-left: 1px solid var(--border);
+  padding-left: 22px;
+}
+
+.agenda-col-title {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Stacked sections in the left column: To-dos on top, Workouts below. */
+.agenda-section + .agenda-section {
+  margin-top: 16px;
+}
+
+.agenda-empty {
+  color: var(--muted);
+}
+
+/* Strava box (right side of the Today section) */
+.strava-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.strava {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.strava-section-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Race countdown */
+.race-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.race-days {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Weekly runs (rings) */
+.strava-miles-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.strava-miles-planned {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-rings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+.run-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.run-ring-circle {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.run-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* start the arc at the top */
+}
+
+.run-ring-track {
+  fill: none;
+  stroke: var(--panel-2);
+  stroke-width: 3.5;
+}
+
+.run-ring-fill {
+  fill: none;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.run-ring-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.run-ring-day {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* Other workouts */
+.strava-other {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strava-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.agenda-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.agenda-item:last-child {
+  border-bottom: none;
+}
+
+.agenda-item-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agenda-cal {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- Workout property details ---- */
+.workout-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 2px 22px;
+}
+
+.workout-detail {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.workout-detail-key {
+  flex: 0 0 auto;
+  min-width: 78px;
+  color: var(--muted);
+}
+
+.workout-detail-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.workout-detail-text {
+  font-weight: 500;
+}
+
+.agenda-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.agenda-time {
+  width: 90px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-name {
+  font-weight: 500;
+}
+
+/* ---- Fitness pane (MacroFactor) ---- */
+.fitness-pane {
+  display: flex;
+  padding: 14px 18px;
+}
+
+.fitness {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  gap: 22px;
+}
+
+.fitness-msg {
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Left: weekly charts (weight + calories) stacked. */
+.fitness-charts {
+  flex: 2 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.chart-title {
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chart-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Chart plot area with a left y-axis gutter. */
+.chart-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.chart-body--col {
+  flex-direction: column;
+}
+
+.y-axis {
+  flex: 0 0 auto;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-right: 6px;
+  font-size: 0.6rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.plot {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+/* Data-point markers for the weight line — fixed-size HTML so they stay round
+   despite the SVG's non-uniform stretch. */
+.weight-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--notion);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible; /* let edge points/line show at the min/max extremes */
+}
+
+/* Calories bar chart */
+.chart-plot-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.cal-tracks {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: 0;
+}
+
+.cal-track-col {
+  position: relative;
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.cal-bar-fill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+}
+
+.cal-target {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--muted);
+  opacity: 0.6;
+}
+
+.chart-x-row {
+  display: flex;
+  margin-top: 3px;
+}
+
+.y-spacer {
+  flex: 0 0 auto;
+  width: 30px;
+}
+
+.cal-labels {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+}
+
+.cal-labels span {
+  flex: 1 1 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+/* Right: today's calories + macros */
+.fitness-today {
+  flex: 1 1 0;
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fitness-today-title {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Today summary fills the box: ring grows to fill the space above the macros. */
+.today-fit {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Circular calorie progress ring — grows to fill available height, centered. */
+.cal-ring {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-ring-inner {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 1;
+  max-width: 100%;
+}
+
+.cal-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* start the arc at the top */
+}
+
+.cal-ring-track {
+  fill: none;
+  stroke: var(--panel-2);
+  stroke-width: 9;
+}
+
+.cal-ring-fill {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.cal-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-big {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cal-target-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.macro-track {
+  height: 7px;
+  background: var(--panel-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.macro-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.macros {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.macro-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 3px;
+}
+
+.macro-label {
+  color: var(--muted);
+}
+
+.macro-nums {
+  font-variant-numeric: tabular-nums;
+}
