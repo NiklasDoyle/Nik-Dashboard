@@ -53,6 +53,73 @@ npm start
 Open <http://localhost:3001> on the vertical monitor and press **F11** for
 fullscreen (or launch the browser in kiosk mode).
 
+## Raspberry Pi kiosk setup
+
+How to run the dashboard unattended on a Pi: the Express server runs under
+[PM2](https://pm2.keymetrics.io) (auto-restart + boot persistence), and a
+fullscreen Chromium is launched from the desktop autostart so it lives inside
+the graphical session. This repo ships [`ecosystem.config.cjs`](ecosystem.config.cjs)
+(the server process) and [`kiosk-pi.sh`](kiosk-pi.sh) (the Linux kiosk launcher;
+`kiosk.sh` is the macOS-only equivalent).
+
+**Prerequisites**
+
+- Raspberry Pi OS **with desktop**, set to **Desktop Autologin**
+  (`sudo raspi-config` → System → Boot/Auto Login → Desktop Autologin). Without
+  this there's no session for the browser to draw into.
+- Node, Chromium, and PM2 installed:
+  ```bash
+  sudo apt install -y nodejs npm chromium-browser
+  sudo npm install -g pm2
+  ```
+
+1. **Clone, install, and configure** (paths are case-sensitive on Linux):
+   ```bash
+   git clone <your-repo-url> ~/auto/Nik-Dashboard
+   cd ~/auto/Nik-Dashboard
+   npm ci
+   cp .env.example .env   # then fill it in (see Setup above)
+   npm run build          # produce dist/ — the server serves this
+   ```
+
+2. **Run the server under PM2** (adds to any existing apps, e.g. n8n):
+   ```bash
+   pm2 start ecosystem.config.cjs
+   pm2 save                 # persist the process list for boot
+   pm2 startup              # run the command it prints, once, to enable boot
+   ```
+   Verify: `pm2 list` shows `dashboard-server` online and
+   `curl -s -o /dev/null -w '%{http_code}\n' localhost:3001` returns `200`.
+
+3. **Launch the kiosk browser at login** via the labwc autostart (Raspberry Pi
+   OS Bookworm default). `kiosk-pi.sh` waits for the server to return `200`,
+   then opens Chromium fullscreen and auto-detects Wayland vs X11:
+   ```bash
+   echo "$HOME/auto/Nik-Dashboard/kiosk-pi.sh &" >> ~/.config/labwc/autostart
+   ```
+   *(Older X11/LXDE images: append `@/home/<user>/auto/Nik-Dashboard/kiosk-pi.sh`
+   to `~/.config/lxsession/LXDE-pi/autostart` instead.)*
+
+4. **Reboot to test:**
+   ```bash
+   sudo reboot
+   ```
+   The dashboard should open fullscreen automatically.
+
+**Keeping it updated** — [`update.sh`](update.sh) hard-resets to `origin/main`,
+pulls, reinstalls, and rebuilds; [`crontab.md`](crontab.md) has the cron lines
+to run it (and the Gmail sync below) on a schedule. Add them with `crontab -e`.
+
+**Troubleshooting**
+
+- **White/blank screen at boot** — Chromium opened before the server was
+  serving. `kiosk-pi.sh` already polls for a `200` for up to ~60s; if your Pi is
+  slow to boot, raise the loop count in the script.
+- **Browser never appears** — check `pm2 logs dashboard-kiosk` is *not* present
+  (the kiosk must run from autostart, not PM2) and that Desktop Autologin is on.
+- **`Script not found` from PM2** — the `cwd` is wrong. `ecosystem.config.cjs`
+  uses `__dirname`, so just start it from inside the repo directory.
+
 ## Auto-sync MacroFactor exports from Gmail
 
 Instead of dropping exports into `data/` by hand, a small script can pull them

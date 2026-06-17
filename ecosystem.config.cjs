@@ -1,10 +1,13 @@
-// PM2 process definitions for the Raspberry Pi kiosk.
-//   pm2 start ecosystem.config.cjs   # add these alongside the existing n8n app
+// PM2 process definition for the Raspberry Pi (server only).
+//   pm2 start ecosystem.config.cjs   # add alongside any existing apps (e.g. n8n)
 //   pm2 save                         # persist for boot
+//
+// The fullscreen Chromium kiosk is NOT managed by PM2 — it's launched from the
+// desktop autostart (~/.config/labwc/autostart) via kiosk-pi.sh, so it runs
+// inside the live graphical session. See README "Raspberry Pi kiosk setup".
+//
 // Note: this does NOT build the app — `dist/` must already exist
-// (`npm run build`, also done by update.sh). The kiosk app needs a live
-// graphical session; see the env block and the plan's caveats if Chromium
-// fails to open a display.
+// (`npm run build`, also done by update.sh).
 module.exports = {
   apps: [
     {
@@ -13,21 +16,6 @@ module.exports = {
       script: 'server/index.js',
       env: { NODE_ENV: 'production', PORT: '3001' },
       autorestart: true,
-    },
-    {
-      name: 'dashboard-kiosk',
-      cwd: __dirname,
-      script: './kiosk-pi.sh',
-      interpreter: 'bash',
-      autorestart: true,
-      restart_delay: 3000, // don't hot-loop if the display isn't ready yet
-      env: {
-        PORT: '3001',
-        DISPLAY: ':0',
-        XAUTHORITY: '/home/nikpi/.Xauthority',
-        XDG_RUNTIME_DIR: '/run/user/1000',
-        WAYLAND_DISPLAY: 'wayland-0', // harmless on X11; used if Wayland detected
-      },
     },
   ],
 }
