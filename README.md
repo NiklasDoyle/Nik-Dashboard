@@ -119,6 +119,26 @@ to run it (and the Gmail sync below) on a schedule. Add them with `crontab -e`.
   (the kiosk must run from autostart, not PM2) and that Desktop Autologin is on.
 - **`Script not found` from PM2** — the `cwd` is wrong. `ecosystem.config.cjs`
   uses `__dirname`, so just start it from inside the repo directory.
+- **Dashboard shrinks / un-fullscreens after the monitor is powered off and on**
+  — turning the monitor off makes the Pi see an HDMI *disconnect*, so labwc drops
+  the output and reshuffles the window. Force the connector to stay enabled at a
+  fixed mode so the Pi never registers the monitor as gone:
+  1. Find the connector name and current mode: `wlr-randr`
+     (`sudo apt install -y wlr-randr` if missing) — e.g. `HDMI-A-1`, `1920x1080@60`.
+  2. Edit `/boot/firmware/cmdline.txt` (keep it a **single line**,
+     space-separated) and append, adjusting to match step 1 — the trailing `D`
+     force-enables the digital output:
+     ```
+     video=HDMI-A-1:1920x1080@60D
+     ```
+  3. `sudo reboot`, then power the monitor off/on to confirm it stays fullscreen.
+
+  Trade-off: the resolution is now hardcoded — it won't auto-adjust if you attach
+  a different monitor (which may show "mode not supported"). It only affects that
+  one connector; nothing else is impacted. **To undo:** remove the `video=…D`
+  token from `/boot/firmware/cmdline.txt` and reboot. (If a wrong mode ever
+  leaves you with no display, edit `cmdline.txt` on the boot partition from
+  another computer.)
 
 ## Auto-sync MacroFactor exports from Gmail
 
