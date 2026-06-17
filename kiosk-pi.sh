@@ -8,12 +8,16 @@ set -euo pipefail
 PORT="${PORT:-3001}"
 URL="http://localhost:${PORT}"
 
-# Wait until the server answers before opening the browser (it may still be
-# starting up under PM2 when this launches).
-echo "Waiting for ${URL}…"
-for _ in $(seq 1 30); do
-  if curl -s -o /dev/null "${URL}"; then break; fi
-  sleep 0.5
+# Wait until the server returns a real 200 before opening the browser. At boot
+# the server (a separate PM2 app) may take a while to come up, so we poll for up
+# to ~60s; opening Chromium early leaves it stuck on a blank/failed page.
+echo "Waiting for ${URL} to return 200…"
+for _ in $(seq 1 60); do
+  if [ "$(curl -s -o /dev/null -w '%{http_code}' "${URL}")" = "200" ]; then
+    echo "Server is up."
+    break
+  fi
+  sleep 1
 done
 
 # Pick whichever Chromium binary is installed (name differs across Pi OS).
