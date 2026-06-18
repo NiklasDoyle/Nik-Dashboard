@@ -10,3 +10,4 @@ git reset --hard HEAD
 git pull origin main
 npm ci
 npm run build
+sudo reboot
