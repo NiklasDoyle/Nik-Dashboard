@@ -106,8 +106,70 @@ async function parseExport(filePath) {
   return days
 }
 
-// Cache keyed by file path + mtime — only re-parse when the newest file changes.
-const cache = { key: null, data: null }
+// ---- "Logical day" helpers -------------------------------------------------
+
+// Local YYYY-MM-DD (matches MacroFactor's per-day date strings).
+function localDateISO(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// The dashboard's day doesn't roll over until 2 AM local time: late-night hours
+// (e.g. 1 AM) still count as the previous day, but from 2 AM on the new calendar
+// day becomes "today" — even before any data has been logged for it.
+function logicalTodayISO(now = new Date()) {
+  return localDateISO(new Date(now.getTime() - 2 * 60 * 60 * 1000))
+}
+
+function addDaysISO(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return localDateISO(new Date(y, m - 1, d + n))
+}
+
+// Most recent day on or before `iso` that carries macro targets, so empty days
+// (including a not-yet-logged today) still show the goal you're aiming for.
+function targetsAsOf(days, iso) {
+  for (let i = days.length - 1; i >= 0; i--) {
+    if (days[i].date <= iso && days[i].targetCalories != null) return days[i]
+  }
+  return null
+}
+
+function emptyDay(date, targets) {
+  return {
+    date,
+    trendWeight: null,
+    weight: null,
+    calories: null,
+    protein: null,
+    fat: null,
+    carbs: null,
+    targetCalories: targets?.targetCalories ?? null,
+    targetProtein: targets?.targetProtein ?? null,
+    targetFat: targets?.targetFat ?? null,
+    targetCarbs: targets?.targetCarbs ?? null,
+  }
+}
+
+// A continuous 7-day window ending on `todayISO`. Days with no export row
+// (gaps, or the current day before data arrives) are filled with empty entries
+// so the charts always slide to include today.
+function buildWeek(days, byDate, todayISO) {
+  const start = addDaysISO(todayISO, -6)
+  const week = []
+  for (let i = 0; i < 7; i++) {
+    const iso = addDaysISO(start, i)
+    week.push(byDate.get(iso) || emptyDay(iso, targetsAsOf(days, iso)))
+  }
+  return week
+}
+
+// Cache the *parsed* days keyed by file path + mtime — only re-parse when the
+// newest file changes. The day-window/today derivation runs on every call so it
+// stays correct as the clock rolls past the 2 AM boundary without a new file.
+const cache = { key: null, days: null }
 
 export async function getFitness() {
   const newest = await findNewestExport()
@@ -116,29 +178,38 @@ export async function getFitness() {
   }
 
   const key = `${newest.path}|${newest.mtimeMs}`
-  if (cache.key === key && cache.data) return cache.data
+  let days
+  if (cache.key === key && cache.days) {
+    days = cache.days
+  } else {
+    try {
+      days = await parseExport(newest.path)
+      cache.key = key
+      cache.days = days
+    } catch (err) {
+      return {
+        sourceFile: newest.file,
+        fileModified: new Date(newest.mtimeMs).toISOString(),
+        days: [],
+        week: [],
+        today: null,
+        error: String(err.message || err),
+      }
+    }
+  }
 
-  try {
-    const days = await parseExport(newest.path)
-    const payload = {
-      sourceFile: newest.file,
-      fileModified: new Date(newest.mtimeMs).toISOString(),
-      days,
-      week: days.slice(-7),
-      today: days.length ? days[days.length - 1] : null,
-      error: null,
-    }
-    cache.key = key
-    cache.data = payload
-    return payload
-  } catch (err) {
-    return {
-      sourceFile: newest.file,
-      fileModified: new Date(newest.mtimeMs).toISOString(),
-      days: [],
-      week: [],
-      today: null,
-      error: String(err.message || err),
-    }
+  const todayISO = logicalTodayISO()
+  const byDate = new Map(days.map((d) => [d.date, d]))
+  // When today's data hasn't arrived yet, reset to an empty day (counters at 0)
+  // while still showing the carried-forward targets.
+  const today = days.length ? byDate.get(todayISO) || emptyDay(todayISO, targetsAsOf(days, todayISO)) : null
+
+  return {
+    sourceFile: newest.file,
+    fileModified: new Date(newest.mtimeMs).toISOString(),
+    days,
+    week: buildWeek(days, byDate, todayISO),
+    today,
+    error: null,
   }
 }

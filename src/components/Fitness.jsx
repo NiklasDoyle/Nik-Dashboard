@@ -84,30 +84,31 @@ function WeightPlot({ pts }) {
   )
 }
 
-// Daily calories bar chart with a target reference line and a y-axis.
+// Daily calories bar chart with a target reference line and a y-axis. Renders
+// the full week including days with no data yet (empty columns), so the chart
+// always slides to show the current day.
 function CaloriesChart({ week }) {
-  const pts = week.filter((d) => d.calories != null)
+  const hasData = week.some((d) => d.calories != null)
+  // Most recent target in the window (the latest day usually carries it).
+  const target = [...week].reverse().find((d) => d.targetCalories != null)?.targetCalories || null
 
   return (
     <div className="chart">
       <div className="chart-head">
         <span className="chart-title">Calories</span>
-        {pts.length > 0 && pts[pts.length - 1].targetCalories && (
-          <span className="chart-value">target {pts[pts.length - 1].targetCalories}</span>
-        )}
+        {target && <span className="chart-value">target {target}</span>}
       </div>
-      {pts.length === 0 ? (
+      {!hasData ? (
         <div className="chart-empty">No calorie data</div>
       ) : (
-        <CaloriesPlot pts={pts} />
+        <CaloriesPlot week={week} target={target} />
       )}
     </div>
   )
 }
 
-function CaloriesPlot({ pts }) {
-  const target = pts[pts.length - 1].targetCalories || null
-  const dataMax = Math.max(...pts.map((d) => d.calories), target || 0)
+function CaloriesPlot({ week, target }) {
+  const dataMax = Math.max(...week.map((d) => d.calories || 0), target || 0)
   // Round the top of the scale up to a clean 500 boundary.
   const axisMax = Math.max(500, Math.ceil(dataMax / 500) * 500)
 
@@ -116,15 +117,21 @@ function CaloriesPlot({ pts }) {
       <div className="chart-plot-row">
         <YAxis ticks={[axisMax, axisMax / 2, 0]} />
         <div className="cal-tracks">
-          {pts.map((d, i) => (
-            <div key={i} className="cal-track-col" title={`${d.date}: ${d.calories} kcal`}>
-              <div
-                className="cal-bar-fill"
-                style={{
-                  height: `${(d.calories / axisMax) * 100}%`,
-                  background: target && d.calories > target ? '#e8590c' : 'var(--accent)',
-                }}
-              />
+          {week.map((d, i) => (
+            <div
+              key={i}
+              className="cal-track-col"
+              title={d.calories != null ? `${d.date}: ${d.calories} kcal` : `${d.date}: no data`}
+            >
+              {d.calories != null && (
+                <div
+                  className="cal-bar-fill"
+                  style={{
+                    height: `${(d.calories / axisMax) * 100}%`,
+                    background: target && d.calories > target ? '#e8590c' : 'var(--accent)',
+                  }}
+                />
+              )}
               {target && <div className="cal-target" style={{ bottom: `${(target / axisMax) * 100}%` }} />}
             </div>
           ))}
@@ -133,7 +140,7 @@ function CaloriesPlot({ pts }) {
       <div className="chart-x-row">
         <div className="y-spacer" />
         <div className="cal-labels">
-          {pts.map((d, i) => (
+          {week.map((d, i) => (
             <span key={i}>{shortDay(d.date)}</span>
           ))}
         </div>
