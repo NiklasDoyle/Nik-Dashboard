@@ -380,23 +380,25 @@ body {
 }
 
 .run-rings {
+  /* Four per row (Mon–Thu on line 1); Fri–Sun wrap and stay centered. */
   display: flex;
-  flex-wrap: nowrap;
-  justify-content: space-between;
-  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 8px;
 }
 
 .run-ring {
+  flex: 0 0 calc(25% - 6px); /* 4 columns; partial last row centers via the parent */
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .run-ring-circle {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 52px;
+  height: 52px;
 }
 
 .run-ring-svg {
@@ -424,12 +426,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.62rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
 .run-ring-day {
-  font-size: 0.58rem;
+  font-size: 0.66rem;
   color: var(--muted);
 }
 
