@@ -179,6 +179,35 @@ async function fetchNotionEvents() {
 
 // ---- Google Calendar (iCal) ------------------------------------------------
 
+// node-ical's rrule.between() returns each occurrence with the correct UTC
+// time-of-day but stamped on the event's *local* calendar date — so an evening
+// event whose local->UTC conversion crosses midnight comes back a day early.
+// We rebuild the true instant from the recurrence's local date plus the series'
+// wall-clock time, converted through the event's IANA timezone (no extra deps).
+function zonedParts(tz, date) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+  const p = Object.fromEntries(dtf.formatToParts(date).map((x) => [x.type, x.value]))
+  return { y: +p.year, mo: +p.month - 1, d: +p.day, h: +p.hour % 24, mi: +p.minute, s: +p.second }
+}
+
+// Offset (ms) of a zone at an instant: (wall-clock-read-as-UTC) - actual UTC.
+function tzOffsetMs(tz, date) {
+  const p = zonedParts(tz, date)
+  return Date.UTC(p.y, p.mo, p.d, p.h, p.mi, p.s) - date.getTime()
+}
+
+// The UTC instant whose wall-clock time in `tz` is the given Y/M/D H:M:S.
+// Two passes settle the offset correctly around DST boundaries.
+function zonedToUtc(y, mo, d, h, mi, s, tz) {
+  let guess = Date.UTC(y, mo, d, h, mi, s)
+  for (let i = 0; i < 2; i++) guess = Date.UTC(y, mo, d, h, mi, s) - tzOffsetMs(tz, new Date(guess))
+  return new Date(guess)
+}
+
 // Fetch all configured Google calendars in parallel. One failing calendar
 // doesn't blank the others — its error is reported under its name.
 async function fetchAllGoogleEvents(rangeStart, rangeEnd) {
@@ -208,11 +237,19 @@ async function fetchGoogleCalendar(cal, rangeStart, rangeEnd) {
 
     if (item.rrule) {
       // Expand recurring events within the requested window.
+      const tzid = item.rrule.origOptions?.tzid
+      const wall = tzid && !allDay ? zonedParts(tzid, item.start) : null
+      const duration = (item.end?.getTime() ?? item.start.getTime()) - item.start.getTime()
       const occurrences = item.rrule.between(rangeStart, rangeEnd, true)
       for (const occ of occurrences) {
-        const duration = (item.end?.getTime() ?? item.start.getTime()) - item.start.getTime()
+        // For timezone-anchored events, rebuild the true instant from the
+        // occurrence's local date + the series wall-clock time (see helpers
+        // above). Floating/all-day events are already correct.
+        const start = wall
+          ? zonedToUtc(occ.getUTCFullYear(), occ.getUTCMonth(), occ.getUTCDate(), wall.h, wall.mi, wall.s, tzid)
+          : occ
         events.push(
-          makeGoogleEvent(cal, item, occ, new Date(occ.getTime() + duration), allDay, occ),
+          makeGoogleEvent(cal, item, start, new Date(start.getTime() + duration), allDay, occ),
         )
       }
     } else {
