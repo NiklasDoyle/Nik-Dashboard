@@ -381,22 +381,22 @@ body {
 
 .run-rings {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 2px;
 }
 
 .run-ring {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .run-ring-circle {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 30px;
+  height: 30px;
 }
 
 .run-ring-svg {
@@ -424,12 +424,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
 
 .run-ring-day {
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   color: var(--muted);
 }
 

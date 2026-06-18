@@ -40,6 +40,18 @@ function currentWeek(now = new Date()) {
   return { start: ymd(monday), end: ymd(sunday) }
 }
 
+// Seven empty day slots (Mon..Sun) so the UI can show one ring per weekday even
+// when nothing is scheduled. Runs are folded onto their day below.
+function weekDays(week) {
+  const s = new Date(`${week.start}T00:00:00`)
+  const out = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(s.getFullYear(), s.getMonth(), s.getDate() + i)
+    out.push({ date: ymd(d), plannedMiles: 0, ranMiles: 0, runs: 0, done: false })
+  }
+  return out
+}
+
 function raceConfig() {
   if (!RACE_DATE) return { date: null, start: null, weeks: Number(RACE_BLOCK_WEEKS) }
   const weeks = Number(RACE_BLOCK_WEEKS) || 16
@@ -139,6 +151,19 @@ export async function getStrava() {
     const miles = runs.reduce((s, r) => s + (r.ran || 0), 0)
     const plannedMiles = runs.reduce((s, r) => s + (r.miles || 0), 0)
 
+    // Fold runs onto their weekday slot. A day can hold multiple runs; ran
+    // miles accumulate as Strava data arrives and fill that day's ring.
+    const days = weekDays(week)
+    const dayByDate = new Map(days.map((d) => [d.date, d]))
+    for (const r of runs) {
+      const slot = dayByDate.get((r.date || '').slice(0, 10))
+      if (!slot) continue
+      slot.plannedMiles += r.miles || 0
+      slot.ranMiles += r.ran || 0
+      slot.runs += 1
+      if (r.done) slot.done = true
+    }
+
     // Other workouts done this week (non-run), grouped by label.
     const groups = new Map()
     for (const w of workouts) {
@@ -151,7 +176,7 @@ export async function getStrava() {
 
     const payload = {
       week,
-      running: { miles, plannedMiles, runs },
+      running: { miles, plannedMiles, runs, days },
       otherWorkouts: [...groups.values()],
       source: 'notion',
       error: null,
@@ -169,7 +194,7 @@ function emptyPayload(week, race, error) {
   return {
     week,
     race,
-    running: { miles: 0, plannedMiles: 0, runs: [] },
+    running: { miles: 0, plannedMiles: 0, runs: [], days: weekDays(week) },
     otherWorkouts: [],
     source: 'notion',
     error,

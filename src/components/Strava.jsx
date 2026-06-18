@@ -31,16 +31,24 @@ function RaceProgress({ race }) {
   )
 }
 
-// One ring per planned run: fills with miles completed toward the planned distance.
-function RunRing({ run }) {
+const fmtMiles = (m) => (Number.isInteger(m) ? String(m) : m.toFixed(1))
+
+// One ring per weekday. Empty days show an outline; runs fill the ring with
+// miles ran toward the planned distance (or fully, for unplanned runs that
+// still logged Strava miles).
+function DayRing({ day }) {
   const R = 16
   const C = 2 * Math.PI * R
-  const planned = run.miles || 0
-  const frac = planned > 0 ? Math.min(1, (run.ran || 0) / planned) : run.done ? 1 : 0
-  const day = parseLocal(run.date).toLocaleDateString([], { weekday: 'short' })
+  const planned = day.plannedMiles || 0
+  const ran = day.ranMiles || 0
+  const frac = planned > 0 ? Math.min(1, ran / planned) : ran > 0 ? 1 : 0
+  const num = planned > 0 ? fmtMiles(planned) : ran > 0 ? fmtMiles(ran) : '—'
+  const weekday = parseLocal(day.date).toLocaleDateString([], { weekday: 'short' })
+  const title =
+    planned > 0 || ran > 0 ? `${weekday}: ${fmtMiles(ran)}/${fmtMiles(planned)} mi` : `${weekday}: no run`
 
   return (
-    <div className="run-ring" title={`${run.title} — ${run.ran || 0}/${planned} mi`}>
+    <div className="run-ring" title={title}>
       <div className="run-ring-circle">
         <svg viewBox="0 0 36 36" className="run-ring-svg">
           <circle className="run-ring-track" cx="18" cy="18" r={R} />
@@ -53,9 +61,9 @@ function RunRing({ run }) {
             style={{ strokeDasharray: C, strokeDashoffset: C * (1 - frac) }}
           />
         </svg>
-        <span className="run-ring-num">{planned || '—'}</span>
+        <span className="run-ring-num">{num}</span>
       </div>
-      <span className="run-ring-day">{day}</span>
+      <span className="run-ring-day">{weekday}</span>
     </div>
   )
 }
@@ -64,7 +72,7 @@ function StravaBody({ data }) {
   const { race, running, otherWorkouts } = data
   const miles = running?.miles ?? 0
   const planned = running?.plannedMiles ?? 0
-  const runs = running?.runs ?? []
+  const days = running?.days ?? []
 
   return (
     <div className="strava">
@@ -77,15 +85,11 @@ function StravaBody({ data }) {
             {miles.toFixed(1)} / {planned.toFixed(0)} mi
           </span>
         </div>
-        {runs.length === 0 ? (
-          <span className="agenda-empty">No runs planned this week</span>
-        ) : (
-          <div className="run-rings">
-            {runs.map((r, i) => (
-              <RunRing key={`${r.date}-${i}`} run={r} />
-            ))}
-          </div>
-        )}
+        <div className="run-rings">
+          {days.map((d) => (
+            <DayRing key={d.date} day={d} />
+          ))}
+        </div>
       </div>
 
       <div className="strava-other">
